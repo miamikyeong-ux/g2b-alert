@@ -21,7 +21,6 @@ KEYWORDS = [
 ]
 
 def check_g2b():
-    # 오늘 날짜 기준 검색
     today = datetime.now().strftime('%Y%m%d')
     url = "http://apis.data.go.kr/1230000/BidPublicInfoService04/getBidPblancListInfoService01"
     
@@ -33,17 +32,33 @@ def check_g2b():
         'inqryEndDt': today
     }
 
-    response = requests.get(url, params=params)
-    items = response.json().get('response', {}).get('body', {}).get('items', [])
-    
-    matched_bids = []
-    for item in items:
-        title = item.get('bidNtceNm', '')
-        # 키워드 매칭 (시스템, 서비스 단독 제외 로직은 리스트에서 이미 제거됨)
-        if any(kw in title for kw in KEYWORDS):
-            matched_bids.append(item)
+    try:
+        response = requests.get(url, params=params)
+        # 응답이 정상인지 확인
+        if response.status_code != 200:
+            print(f"API 호출 실패: {response.status_code}")
+            return []
             
-    return matched_bids
+        # JSON 변환 시도 전 텍스트 확인
+        data = response.json()
+        items = data.get('response', {}).get('body', {}).get('items', [])
+        
+        # items가 딕셔너리 형태일 경우 리스트로 변환 (API 특성)
+        if isinstance(items, dict):
+            items = [items]
+        elif not isinstance(items, list):
+            items = []
+            
+        matched_bids = []
+        for item in items:
+            title = item.get('bidNtceNm', '')
+            if any(kw in title for kw in KEYWORDS):
+                matched_bids.append(item)
+        return matched_bids
+        
+    except Exception as e:
+        print(f"에러 발생: {e}")
+        return []
 
 def send_email(bids):
     if not bids: return
