@@ -22,20 +22,30 @@ KEYWORDS = [
 
 def check_g2b():
     today = datetime.now().strftime('%Y%m%d')
-    # params 대신 URL에 직접 f-string으로 키와 파라미터를 넣습니다.
-    # 이렇게 해야 특수문자가 포함된 인증키가 변형되지 않습니다.
     url = f"http://apis.data.go.kr/1230000/BidPublicInfoService04/getBidPblancListInfoService01?serviceKey={API_KEY}&type=json&numOfRows=100&inqryBgnDt={today}&inqryEndDt={today}"
     
     try:
-        response = requests.get(url) # params 항목 삭제
+        response = requests.get(url, timeout=30)
+        
+        if response.status_code == 500:
+            print("나라장터 서버 내부 오류(500)가 발생했습니다. 잠시 후 자동 재시도됩니다.")
+            return []
+            
         if response.status_code != 200:
             print(f"API 호출 실패: {response.status_code}")
             return []
             
-        data = response.json()
+        # JSON 변환 시도
+        try:
+            data = response.json()
+        except Exception:
+            print("서버 응답이 올바른 JSON 형식이 아닙니다. (서버 점검 중일 수 있음)")
+            return []
+
+        # 데이터 구조 파싱
         items = data.get('response', {}).get('body', {}).get('items', [])
         
-        # items가 딕셔너리 형태일 경우 리스트로 변환 (API 특성)
+        # items가 딕셔너리 형태일 경우 리스트로 변환 (공고가 1개일 때의 특성)
         if isinstance(items, dict):
             items = [items]
         elif not isinstance(items, list):
@@ -44,8 +54,10 @@ def check_g2b():
         matched_bids = []
         for item in items:
             title = item.get('bidNtceNm', '')
+            # 키워드 매칭
             if any(kw in title for kw in KEYWORDS):
                 matched_bids.append(item)
+        
         return matched_bids
         
     except Exception as e:
