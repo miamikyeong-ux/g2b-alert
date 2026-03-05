@@ -22,24 +22,16 @@ KEYWORDS = [
 
 def check_g2b():
     today = datetime.now().strftime('%Y%m%d')
-    url = "http://apis.data.go.kr/1230000/BidPublicInfoService04/getBidPblancListInfoService01"
+    # params 대신 URL에 직접 f-string으로 키와 파라미터를 넣습니다.
+    # 이렇게 해야 특수문자가 포함된 인증키가 변형되지 않습니다.
+    url = f"http://apis.data.go.kr/1230000/BidPublicInfoService04/getBidPblancListInfoService01?serviceKey={API_KEY}&type=json&numOfRows=100&inqryBgnDt={today}&inqryEndDt={today}"
     
-    params = {
-        'serviceKey': API_KEY,
-        'type': 'json',
-        'numOfRows': '100',
-        'inqryBgnDt': today,
-        'inqryEndDt': today
-    }
-
     try:
-        response = requests.get(url, params=params)
-        # 응답이 정상인지 확인
+        response = requests.get(url) # params 항목 삭제
         if response.status_code != 200:
             print(f"API 호출 실패: {response.status_code}")
             return []
             
-        # JSON 변환 시도 전 텍스트 확인
         data = response.json()
         items = data.get('response', {}).get('body', {}).get('items', [])
         
